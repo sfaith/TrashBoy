@@ -10,12 +10,6 @@
 #    2. Edit TrashBoy.config.ps1 with your settings
 #    3. Run: .\TrashBoy.ps1  (or double-click TrashBoy.bat)
 #
-#  HOW TO FIND YOUR PLEX TOKEN:
-#    1. Open Plex Web in a browser and sign in
-#    2. Browse to any library item, click (...) > Get Info > View XML
-#    3. The URL will contain ?X-Plex-Token=YOURTOKEN -- copy that value
-#    Full guide: https://support.plex.tv/articles/204059436
-#
 #  DATA SOURCES:
 #    Tautulli (recommended, optional):
 #      When TautulliConfig.Enabled = $true, play counts and last-played
