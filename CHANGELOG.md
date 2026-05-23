@@ -16,8 +16,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Size threshold filter (only flag items above a minimum file size)
 - Pre-delete *arr match validation (warn before attempting deletion if
   an item is unlikely to match, e.g. raw torrent filenames)
-- Fix encoding corruption on artist names with special characters
-  (ö, ü, ô etc.) in report display
+
+---
+
+## [0.2.4] - 2026-05-22
+
+### Fixed
+- **UTF-8 encoding corruption in Plex API responses** -- `Invoke-RestMethod`
+  was misinterpreting non-ASCII characters in artist and title names returned
+  by the Plex API, displaying `MÃ¶tley CrÃ¼e` instead of `Mötley Crüe`,
+  `BjÃ¶rk` instead of `Björk`, etc. Root cause: PowerShell was decoding the
+  response bytes as Latin-1 rather than UTF-8. Fixed by switching
+  `Invoke-PlexApi` to `Invoke-WebRequest`, reading `RawContentStream` bytes
+  directly, and decoding explicitly with
+  `[System.Text.Encoding]::UTF8.GetString()` before passing to
+  `ConvertFrom-Json`. This affects display in reports, logs, and Lidarr
+  name matching for artists with special characters.
 
 ---
 

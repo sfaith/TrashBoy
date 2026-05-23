@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.3
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.4
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -221,7 +221,15 @@ function Invoke-PlexApi ([string]$Path, [hashtable]$Query = @{}) {
         $uri += "&$k=$([Uri]::EscapeDataString($Query[$k]))"
     }
     try {
-        return Invoke-RestMethod -Uri $uri -Headers @{ Accept = 'application/json' } -Method Get -ErrorAction Stop
+        # Use Invoke-WebRequest and decode bytes explicitly as UTF-8 to prevent
+        # PowerShell misinterpreting non-ASCII characters (e.g. ö, ü, ô) as Latin-1,
+        # which causes display corruption like MÃ¶tley CrÃ¼e instead of Mötley Crüe.
+        $progressPreference = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        $response = Invoke-WebRequest -Uri $uri -Headers @{ Accept = 'application/json' } -Method Get -UseBasicParsing -ErrorAction Stop
+        $ProgressPreference = $progressPreference
+        $json     = [System.Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray())
+        return $json | ConvertFrom-Json
     } catch {
         Write-Log ("  [ERROR] Plex API {0} -- {1}" -f $Path, $_) 'Red'
         return $null
