@@ -17,6 +17,56 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.4] - 2026-05-22
+
+### Fixed
+- **Null DateTime crash in `Get-PlayInfo`** -- the `-PlexLastViewed` parameter
+  was typed as `[DateTime]`, which PowerShell cannot bind `$null` to. Items
+  that have never been played have no `lastViewedAt` field so `$null` was
+  always passed for unwatched items. Changed to `[nullable[DateTime]]`.
+
+### Changed
+- **Scope menu shows mapped libraries only** -- the scan scope selection menu
+  (option 1) previously listed all Plex libraries including unmapped ones.
+  Selecting an unmapped library would scan nothing and produce an empty report.
+  The menu now filters to mapped libraries only, matching what the scan
+  itself will actually process.
+
+---
+
+## [0.1.3] - 2026-05-22
+
+### Fixed
+- **Strict mode `viewCount` crash** -- `Set-StrictMode -Version Latest` throws
+  when accessing a property that doesn't exist on an object. Plex omits
+  `viewCount`, `lastViewedAt`, and `year` entirely on items that have never
+  been played rather than returning null. All property accesses in the movie,
+  TV show, artist, episode, and track scan blocks now use
+  `$obj.PSObject.Properties['propertyName']` safe-access checks before
+  reading the value. This was the immediate crash on first scan run.
+
+### Added
+- **Skip unmapped libraries at scan time** -- libraries not present in
+  `$LibraryMap` are now excluded before scanning begins. The library
+  discovery output labels them `(unmapped -- will skip)` and a summary
+  line lists which libraries were skipped and why. Previously unmapped
+  libraries were scanned and then silently ignored at delete time, which
+  wasted API calls and caused the strict mode crash on libraries like
+  `Adult` that were never intended to be managed by TrashBoy.
+- **`Holiday Movies` typo fixed** in personal config and example config --
+  was `Holiday_Movies` (underscore), Plex reports it as `Holiday Movies`
+  (space), so it was never matching.
+- **`Comedy` library** added to personal config mapped to Radarr.
+- **Full Plex token retrieval instructions** moved into both config files
+  inside the `$PlexConfig` comment block -- no longer requires opening
+  the main script or README.
+- **Tautulli API key location** documented inline in both config files:
+  `Tautulli > Settings > Web Interface > scroll to the bottom > API Key`
+- **`*arr` API key locations** documented inline in both config files for
+  each service: `Settings > General > Security > API Key`
+
+---
+
 ## [0.1.2] - 2026-05-22
 
 ### Added

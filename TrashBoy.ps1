@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.1.2
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.1.4
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -461,7 +461,7 @@ function Get-TautulliSectionCache ([string]$SectionId, [string]$LibraryType) {
     return $Script:TautulliCache[$SectionId]
 }
 
-function Get-PlayInfo ([string]$RatingKey, [string]$SectionId, [string]$LibraryType, [int]$PlexViewCount, [DateTime]$PlexLastViewed) {
+function Get-PlayInfo ([string]$RatingKey, [string]$SectionId, [string]$LibraryType, [int]$PlexViewCount, [nullable[DateTime]]$PlexLastViewed) {
     # Returns [int]$PlayCount, [DateTime|null]$LastPlayed
 
     $useTautulli = $TautulliConfig.Enabled -and $Script:ConnectionStatus.Tautulli
@@ -536,8 +536,8 @@ function Get-UnwatchedFromLibrary {
                 $idx++
                 Write-Progress2 'Scanning movies...' $idx $items.Count $item.title
 
-                $plexViews    = if ($item.viewCount) { [int]$item.viewCount } else { 0 }
-                $plexLastView = if ($item.lastViewedAt) {
+                $plexViews    = if ($item.PSObject.Properties['viewCount'])    { [int]$item.viewCount }    else { 0 }
+                $plexLastView = if ($item.PSObject.Properties['lastViewedAt']) {
                     [DateTimeOffset]::FromUnixTimeSeconds([long]$item.lastViewedAt).LocalDateTime
                 } else { $null }
 
@@ -557,7 +557,7 @@ function Get-UnwatchedFromLibrary {
                     Library       = $libName
                     Type          = 'Movie'
                     Title         = $item.title
-                    Year          = if ($item.year) { [int]$item.year } else { 0 }
+                    Year          = if ($item.PSObject.Properties['year']) { [int]$item.year } else { 0 }
                     PlayCount     = $playInfo.PlayCount
                     LastPlayed    = $playInfo.LastPlayed
                     DateAdded     = $addedAt
@@ -590,8 +590,8 @@ function Get-UnwatchedFromLibrary {
 
                 # For Tautulli: use show-level play count (aggregate across episodes)
                 # For Plex: scan episodes individually to get max play count
-                $plexShowViews    = if ($show.viewCount) { [int]$show.viewCount } else { 0 }
-                $plexShowLastView = if ($show.lastViewedAt) {
+                $plexShowViews    = if ($show.PSObject.Properties['viewCount'])    { [int]$show.viewCount }    else { 0 }
+                $plexShowLastView = if ($show.PSObject.Properties['lastViewedAt']) {
                     [DateTimeOffset]::FromUnixTimeSeconds([long]$show.lastViewedAt).LocalDateTime
                 } else { $null }
 
@@ -610,7 +610,7 @@ function Get-UnwatchedFromLibrary {
                     } else { @() }
                     $maxEpViews = 0
                     foreach ($ep in $episodes) {
-                        $v = if ($ep.viewCount) { [int]$ep.viewCount } else { 0 }
+                        $v = if ($ep.PSObject.Properties['viewCount']) { [int]$ep.viewCount } else { 0 }
                         if ($v -gt $maxEpViews) { $maxEpViews = $v }
                     }
                     $playInfo.PlayCount = $maxEpViews
@@ -633,7 +633,7 @@ function Get-UnwatchedFromLibrary {
                     Library       = $libName
                     Type          = 'TVShow'
                     Title         = $show.title
-                    Year          = if ($show.year) { [int]$show.year } else { 0 }
+                    Year          = if ($show.PSObject.Properties['year']) { [int]$show.year } else { 0 }
                     PlayCount     = $playInfo.PlayCount
                     LastPlayed    = $playInfo.LastPlayed
                     DateAdded     = $addedAt
@@ -664,7 +664,7 @@ function Get-UnwatchedFromLibrary {
                 $idx++
                 Write-Progress2 'Scanning artists...' $idx $artists.Count $artist.title
 
-                $plexViews    = if ($artist.viewCount) { [int]$artist.viewCount } else { 0 }
+                $plexViews    = if ($artist.PSObject.Properties['viewCount']) { [int]$artist.viewCount } else { 0 }
                 $plexLastView = $null
 
                 $playInfo = Get-PlayInfo `
@@ -682,7 +682,7 @@ function Get-UnwatchedFromLibrary {
                     } else { @() }
                     $maxTrackViews = 0
                     foreach ($t in $tracks) {
-                        $v = if ($t.viewCount) { [int]$t.viewCount } else { 0 }
+                        $v = if ($t.PSObject.Properties['viewCount']) { [int]$t.viewCount } else { 0 }
                         if ($v -gt $maxTrackViews) { $maxTrackViews = $v }
                     }
                     $playInfo.PlayCount = $maxTrackViews
@@ -864,12 +864,22 @@ function Invoke-UnwatchedScan {
     }
 
     foreach ($lib in $allLibraries) {
-        $svc = if ($LibraryMap.ContainsKey($lib.title)) { $LibraryMap[$lib.title] } else { '(unmapped)' }
+        $svc = if ($LibraryMap.ContainsKey($lib.title)) { $LibraryMap[$lib.title] } else { '(unmapped -- will skip)' }
         Write-Log ("  {0,-35} [{1}]  → {2}" -f $lib.title, $lib.type, $svc) 'DarkGray'
     }
 
+    # Filter to mapped libraries only (unmapped = no *arr service = nothing to scan or delete)
+    $mappedLibraries = $allLibraries | Where-Object { $LibraryMap.ContainsKey($_.title) }
+    $skippedLibraries = @($allLibraries | Where-Object { -not $LibraryMap.ContainsKey($_.title) })
+    if ($skippedLibraries.Count -gt 0) {
+        Write-Log ''
+        Write-Log ("  Skipping {0} unmapped library/libraries: {1}" -f `
+            $skippedLibraries.Count, ($skippedLibraries.title -join ', ')) 'DarkGray'
+        Write-Log '  Add libraries to $LibraryMap in TrashBoy.config.ps1 to include them.' 'DarkGray'
+    }
+
     if ($FilterLibraries.Count -gt 0) {
-        $allLibraries = $allLibraries | Where-Object { $FilterLibraries -contains $_.title }
+        $mappedLibraries = $mappedLibraries | Where-Object { $FilterLibraries -contains $_.title }
         Write-Log ''
         Write-Log ("  Filtered to: {0}" -f ($FilterLibraries -join ', ')) 'Cyan'
     }
@@ -880,7 +890,7 @@ function Invoke-UnwatchedScan {
 
     $allUnwatched = [System.Collections.Generic.List[PSObject]]::new()
 
-    foreach ($lib in $allLibraries) {
+    foreach ($lib in $mappedLibraries) {
         Write-Log ("  {0}  [{1}]" -f $lib.title, $lib.type) 'White'
         $items = Get-UnwatchedFromLibrary -Library $lib -MaxPlays $effectiveMaxPlays
         $count = $items.Count
@@ -1199,8 +1209,9 @@ do {
         '1' {
             $Script:ToolStartTime = Get-Date
 
-            $allLibraries = Get-PlexLibraries
-            $libNames     = @($allLibraries | ForEach-Object { $_.title })
+            $allLibraries    = Get-PlexLibraries
+            $mappedLibraries = @($allLibraries | Where-Object { $LibraryMap.ContainsKey($_.title) })
+            $libNames        = @($mappedLibraries | ForEach-Object { $_.title })
 
             $scopeOptions = @('All libraries') + $libNames
             $scopeChoice  = Select-SubMode 'Select scan scope:' $scopeOptions -Title 'Scan Libraries'
