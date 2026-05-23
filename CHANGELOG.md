@@ -17,6 +17,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.5] - 2026-05-22
+
+### Fixed
+- **Strict mode crash in `Get-GuidValue`** -- `Where-Object { $_.id -like ... }`
+  throws under `Set-StrictMode -Version Latest` when a Guid object in the
+  collection does not have an `id` property. Fixed by adding
+  `$_.PSObject.Properties['id']` guard inside the `Where-Object` filter, and
+  a matching `$Item.PSObject.Properties['Guid']` guard on the outer check.
+
+---
+
 ## [0.1.4] - 2026-05-22
 
 ### Fixed

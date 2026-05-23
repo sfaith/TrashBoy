@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.1.4
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.1.5
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -506,8 +506,8 @@ function Get-ItemSizeBytes ([object]$MediaNode) {
 }
 
 function Get-GuidValue ([object]$Item, [string]$Scheme) {
-    if ($Item.Guid) {
-        $hit = $Item.Guid | Where-Object { $_.id -like "$Scheme`://*" } | Select-Object -First 1
+    if ($Item.PSObject.Properties['Guid'] -and $Item.Guid) {
+        $hit = $Item.Guid | Where-Object { $_.PSObject.Properties['id'] -and $_.id -like "$Scheme`://*" } | Select-Object -First 1
         if ($hit) { return ($hit.id -replace "$Scheme`://", '') }
     }
     return ''
