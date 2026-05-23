@@ -1,6 +1,6 @@
 # TrashBoy — Plex Unwatched Media Cleanup
 
-**Version: 0.2.4** &nbsp;·&nbsp; *Working title — may eventually be merged into [FolderBoy](https://github.com/sfaith/FolderBoy)*
+**Version: 0.2.6** &nbsp;·&nbsp; *Working title — may eventually be merged into [FolderBoy](https://github.com/sfaith/FolderBoy)*
 
 A PowerShell tool that identifies unwatched or rarely watched media across your Plex libraries and removes it cleanly through [Sonarr](https://sonarr.tv), [Radarr](https://radarr.video), and [Lidarr](https://lidarr.audio). Optionally uses [Tautulli](https://tautulli.com) for accurate, multi-user play history.
 
@@ -10,7 +10,7 @@ A PowerShell tool that identifies unwatched or rarely watched media across your 
 
 TrashBoy has three jobs:
 
-1. **Discover** — queries Plex for every item in your libraries and checks play counts
+1. **Discover** — queries Plex (and Tautulli if enabled) for every item in your libraries and checks play counts across all users
 2. **Report** — displays flagged items grouped by library, sorted by play count, with size and last-played date
 3. **Delete** — removes confirmed items through the appropriate \*arr API, then tells Plex to rescan the affected libraries
 
@@ -308,7 +308,6 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 
 - CSV export of scan results
 - Per-library play count threshold overrides
-- Filter by minimum age (only flag items added more than N days ago)
 - Scheduled / unattended execution via Windows Task Scheduler
 - Potential merge with [FolderBoy](https://github.com/sfaith/FolderBoy) — TBD
 
