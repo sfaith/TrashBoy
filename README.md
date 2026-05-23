@@ -1,6 +1,8 @@
 # TrashBoy — Plex Unwatched Media Cleanup
 
-**Version: 0.2.6** &nbsp;·&nbsp; *Working title — may eventually be merged into [FolderBoy](https://github.com/sfaith/FolderBoy)*
+![Version](https://img.shields.io/badge/version-0.2.6-blue) ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey) ![PowerShell](https://img.shields.io/badge/powershell-5.1%2B-blue) ![License](https://img.shields.io/badge/license-GPL--3.0-green)
+
+*Working title — may eventually be merged into [FolderBoy](https://github.com/sfaith/FolderBoy)*
 
 A PowerShell tool that identifies unwatched or rarely watched media across your Plex libraries and removes it cleanly through [Sonarr](https://sonarr.tv), [Radarr](https://radarr.video), and [Lidarr](https://lidarr.audio). Optionally uses [Tautulli](https://tautulli.com) for accurate, multi-user play history.
 
