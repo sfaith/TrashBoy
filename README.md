@@ -1,6 +1,6 @@
 # TrashBoy — Plex Unwatched Media Cleanup
 
-**Version: 0.1.2** &nbsp;·&nbsp; *Working title — may eventually be merged into [FolderBoy](https://github.com/sfaith/FolderBoy)*
+**Version: 0.2.4** &nbsp;·&nbsp; *Working title — may eventually be merged into [FolderBoy](https://github.com/sfaith/FolderBoy)*
 
 A PowerShell tool that identifies unwatched or rarely watched media across your Plex libraries and removes it cleanly through [Sonarr](https://sonarr.tv), [Radarr](https://radarr.video), and [Lidarr](https://lidarr.audio). Optionally uses [Tautulli](https://tautulli.com) for accurate, multi-user play history.
 
@@ -48,7 +48,13 @@ Results are grouped by library and show:
 - Which \*arr service manages the item
 
 ### 2. Delete Unwatched
-Takes the results from the last scan and removes items through their \*arr app. You choose the scope (all flagged items, or a single library) and the delete mode before anything happens.
+Takes the results from the last scan and removes items through their \*arr app. The flow is:
+
+1. **Choose scope** — all flagged items, or a single library
+2. **Review the item list** — every item that would be deleted is shown with plays, dates, size, and \*arr service. Total reclaimable space is displayed at the top.
+3. **Select items** — choose all items (`A`), or enter a subset by number, comma-separated list, or range (e.g. `1,3,5-8,12`)
+4. **Choose delete mode** — see below
+5. **Type YES to confirm** — nothing is deleted until this step
 
 **Delete modes:**
 - **Remove from \*arr only** — the \*arr app forgets the item, files stay on disk. Useful for stopping re-downloads without reclaiming space.
@@ -147,14 +153,13 @@ Same structure for `$SonarrConfig` and `$LidarrConfig`. Find API keys at **Setti
 
 ```powershell
 $LibraryMap = @{
-    'TV Shows'       = 'Sonarr'
-    'Movies'         = 'Radarr'
-    'Documentaries'  = 'Radarr'
-    'Holiday_Movies' = 'Radarr'
-    'Short Films'    = 'Radarr'
-    'Music'          = 'Lidarr'
-#   'Music Videos'   = 'Radarr'   # Uncomment to include
-#   'Anime'          = 'Sonarr'   # Add your own libraries here
+    'TV Shows'      = 'Sonarr'
+    'Movies'        = 'Radarr'
+    'Documentaries' = 'Radarr'
+    'Short Films'   = 'Radarr'
+    'Music'         = 'Lidarr'
+#   'Music Videos'  = 'Radarr'   # Uncomment to include
+#   'Anime'         = 'Sonarr'   # Add your own libraries here
 }
 ```
 
@@ -296,7 +301,6 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 ## Planned Features
 
 - CSV export of scan results
-- Interactive item-by-item review before deletion (queue-and-confirm flow)
 - Per-library play count threshold overrides
 - Filter by minimum age (only flag items added more than N days ago)
 - Scheduled / unattended execution via Windows Task Scheduler
