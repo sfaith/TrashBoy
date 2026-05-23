@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.1
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.2
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -1356,9 +1356,9 @@ do {
             $Script:ToolStartTime = Get-Date
 
             # ── Step 1: choose scope ──────────────────────────────────────────
-            $deleteScope = Select-SubMode 'Which items to delete:' @(
-                ("All {0} flagged item(s) from last scan" -f $Script:LastScanResults.Count)
-                'Choose a library from last scan results'
+            $deleteScope = Select-SubMode 'Select scope -- you will review items and confirm before anything is deleted:' @(
+                ("All libraries  -- {0} item(s) flagged" -f $Script:LastScanResults.Count)
+                'Choose a specific library'
             ) -Title 'Delete Unwatched'
             if ($deleteScope -eq  0) { $Script:ReturnedToMenu = $true; break }
             if ($deleteScope -eq -1) { $Script:QuitRequested  = $true; break }

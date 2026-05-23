@@ -19,6 +19,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.2] - 2026-05-22
+
+### Changed
+- **Scope selection prompt reworded** -- the first prompt in the delete
+  flow previously read `Which items to delete:` with options like
+  `All 3555 flagged item(s) from last scan`, which implied an immediate
+  commitment. Now reads `Select scope -- you will review items and confirm
+  before anything is deleted:` with options `All libraries -- N item(s)
+  flagged` and `Choose a specific library`. Makes clear that choosing a
+  scope is just the starting point of a review process, not a delete trigger.
+
+---
+
 ## [0.2.1] - 2026-05-22
 
 ### Added
