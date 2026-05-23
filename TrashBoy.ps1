@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.1.6
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.0
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -942,10 +942,67 @@ function Invoke-UnwatchedScan {
         Write-Log ''
     }
 
-    Write-Log ("  Log saved to: {0}" -f $Script:LogFile) 'Cyan'
-
     $Script:LastScanResults = [array]$sorted
     return [array]$sorted
+}
+
+# ================================================================
+#  SHARED: Item list display
+#  Used by both the scan report and the pre-delete review
+# ================================================================
+function Show-ItemList {
+    param(
+        [array]$Items,
+        [string]$Header = 'ITEMS',
+        [bool]$WriteToLog = $false
+    )
+
+    if (-not $Items -or $Items.Count -eq 0) {
+        if ($WriteToLog) { Write-Log '  No items to display.' 'Yellow' }
+        else { Write-Host '  No items to display.' -ForegroundColor Yellow }
+        return
+    }
+
+    $totalBytes = ($Items | Measure-Object -Property SizeBytes -Sum).Sum
+
+    if ($WriteToLog) {
+        Write-Log ''
+        Write-SectionHeader $Header
+        Write-Log ''
+        Write-Log ("  Total reclaimable space : {0}" -f (Format-Bytes $totalBytes)) 'Cyan'
+        Write-Log ''
+    } else {
+        Write-Host ''
+        Write-Host ('  ' + ('=' * 66)) -ForegroundColor Cyan
+        Write-Host ("  {0}" -f $Header) -ForegroundColor Cyan
+        Write-Host ('  ' + ('=' * 66)) -ForegroundColor Cyan
+        Write-Host ''
+        Write-Host ("  Total reclaimable space : {0}" -f (Format-Bytes $totalBytes)) -ForegroundColor Cyan
+        Write-Host ''
+    }
+
+    $grouped = $Items | Group-Object Library
+    foreach ($group in $grouped) {
+        $groupBytes = ($group.Group | Measure-Object -Property SizeBytes -Sum).Sum
+        if ($WriteToLog) {
+            Write-Log ("  ┌── {0}" -f $group.Name) 'DarkCyan'
+        } else {
+            Write-Host ("  ┌── {0}" -f $group.Name) -ForegroundColor DarkCyan
+        }
+        foreach ($item in $group.Group) {
+            $lastStr   = if ($item.LastPlayed) { $item.LastPlayed.ToString('yyyy-MM-dd') } else { 'never    ' }
+            $svcLabel  = if ($item.Service) { "[{0}]" -f $item.Service } else { '[unmapped]' }
+            $yearStr   = if ($item.Year -gt 0) { "({0})" -f $item.Year } else { '      ' }
+            $titleFull = '{0} {1}' -f $item.Title, $yearStr
+            $color     = if ($item.PlayCount -eq 0) { 'White' } else { 'DarkYellow' }
+            $line      = "  │  {0,-52} Plays:{1,3}  Added:{2:yyyy-MM-dd}  Last:{3}  {4,10}  {5}" -f `
+                $titleFull, $item.PlayCount, $item.DateAdded, $lastStr, $item.SizeHuman, $svcLabel
+            if ($WriteToLog) { Write-Log $line $color } else { Write-Host $line -ForegroundColor $color }
+        }
+        $footer = "  └── {0} item(s)  |  {1}" -f $group.Count, (Format-Bytes $groupBytes)
+        if ($WriteToLog) { Write-Log $footer 'DarkCyan'; Write-Log '' }
+        else { Write-Host $footer -ForegroundColor DarkCyan; Write-Host '' }
+    }
 }
 
 # ================================================================
@@ -1239,6 +1296,7 @@ do {
 
             $Script:ToolStartTime = Get-Date
 
+            # ── Step 1: choose scope ──────────────────────────────────────────
             $deleteScope = Select-SubMode 'Which items to delete:' @(
                 ("All {0} flagged item(s) from last scan" -f $Script:LastScanResults.Count)
                 'Choose a library from last scan results'
@@ -1247,6 +1305,7 @@ do {
             if ($deleteScope -eq -1) { $Script:QuitRequested  = $true; break }
 
             $itemsToDelete = $Script:LastScanResults
+            $selectedLib   = 'All'
 
             if ($deleteScope -eq 2) {
                 $groupNames   = @($Script:LastScanResults | Group-Object Library | ForEach-Object { $_.Name })
@@ -1257,6 +1316,19 @@ do {
                 $itemsToDelete = @($Script:LastScanResults | Where-Object { $_.Library -eq $selectedLib })
             }
 
+            # ── Step 2: show what would be deleted ───────────────────────────
+            $scopeLabel = if ($selectedLib -eq 'All') {
+                'All libraries -- {0} item(s)' -f $itemsToDelete.Count
+            } else {
+                '{0} -- {1} item(s)' -f $selectedLib, $itemsToDelete.Count
+            }
+            Show-ItemList -Items $itemsToDelete -Header ("ITEMS QUEUED FOR DELETION -- {0}" -f $scopeLabel)
+
+            Write-Host '  Review the list above before choosing a delete mode.' -ForegroundColor Yellow
+            Write-Host '  You will be asked to type YES before anything is deleted.' -ForegroundColor DarkGray
+            Write-Host ''
+
+            # ── Step 3: choose mode ───────────────────────────────────────────
             $modeChoice = Select-SubMode 'Select delete mode:' @(
                 'Remove from *arr only  -- item removed from app, files stay on disk'
                 'Remove from *arr + delete files  -- PERMANENT, files gone from disk'
@@ -1268,8 +1340,7 @@ do {
             Invoke-Delete -Items $itemsToDelete -WithFiles $withFiles
 
             $modeStr = if ($withFiles) { 'with files' } else { 'keep files' }
-            Add-SessionEntry ("Delete [{0}] [{1}] -- {2} item(s)" -f $modeStr, `
-                $(if ($deleteScope -eq 2) { $selectedLib } else { 'All' }), $itemsToDelete.Count)
+            Add-SessionEntry ("Delete [{0}] [{1}] -- {2} item(s)" -f $modeStr, $selectedLib, $itemsToDelete.Count)
         }
 
         '3' {

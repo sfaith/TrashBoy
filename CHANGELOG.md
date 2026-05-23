@@ -11,9 +11,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Planned
 - CSV export of scan results
 - Per-library play count threshold overrides
-- Interactive item-by-item review before deletion (queue-and-confirm flow)
+- Interactive item-by-item selection before deletion
 - Scheduled / unattended execution support (Windows Task Scheduler)
 - Filter by minimum age (only flag items added more than N days ago)
+- Size threshold filter (only flag items above a minimum file size)
+- Pre-delete *arr match validation (warn before attempting deletion if
+  an item is unlikely to match, e.g. raw torrent filenames)
+
+---
+
+## [0.2.0] - 2026-05-22
+
+### Changed
+- **Delete flow redesigned -- items shown before any commitment**
+  Previously the user chose a scope, chose a delete mode, then typed
+  YES -- without ever seeing what was about to be deleted. The new flow is:
+  1. Choose scope (all / by library)
+  2. **Item list displayed** -- same grouped format as the scan report,
+     showing every item that would be deleted with plays, dates, size,
+     and service. Total reclaimable space shown at the top.
+  3. Reminder that nothing is deleted until YES is typed
+  4. Choose delete mode
+  5. Type YES to confirm
+  This applies to both the "all items" and "choose a library" paths.
+- **`Show-ItemList` helper** -- item list display logic extracted into a
+  reusable function used by both the scan report and the pre-delete
+  preview. Accepts a `WriteToLog` flag so the same function works for
+  both console-only display (delete preview) and log-writing display
+  (scan report).
 
 ---
 
