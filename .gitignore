@@ -1,0 +1,8 @@
+# .gitignore for TrashBoy
+
+# User config (contains API keys and tokens -- never commit this)
+TrashBoy.config.ps1
+
+# Log files
+Logs/
+*.log
