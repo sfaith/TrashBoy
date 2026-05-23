@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.5
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.6
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -987,6 +987,25 @@ function Invoke-UnwatchedScan {
 }
 
 # ================================================================
+#  SHARED: *arr match confidence check
+#  Returns $true if the item is likely to fail *arr matching.
+#  Heuristics: no GUIDs at all (most reliable), or title matches
+#  a known release group pattern (RARBG, YTS, FGT, dot-separated
+#  uppercase). Used to flag items before deletion is confirmed.
+# ================================================================
+function Get-MatchConfidence ([PSObject]$Item) {
+    # No GUIDs at all -- will fall back to title-only match, which is fragile
+    $hasGuid = $Item.GuidTmdb -or $Item.GuidImdb -or $Item.GuidTvdb -or $Item.GuidMbrainz
+    if (-not $hasGuid) { return $true }
+
+    # Title matches release group patterns
+    if ($Item.Title -match '-(RARBG|YTS|FGT|YIFY|EZTV|SPARKS|GECKOS|NTG)$') { return $true }
+    if ($Item.Title -match '^[A-Z0-9]+(\.[A-Z0-9]+){3,}') { return $true }
+
+    return $false
+}
+
+# ================================================================
 #  SHARED: Item list display
 #  Used by both the scan report and the pre-delete review
 # ================================================================
@@ -1039,13 +1058,21 @@ function Show-ItemList {
             $titleFull = '{0} {1}' -f $item.Title, $yearStr
             $color     = if ($item.PlayCount -eq 0) { 'White' } else { 'DarkYellow' }
             $numPrefix = if ($ShowNumbers) { "{0,4}. " -f $itemNum } else { '  │  ' }
-            $line      = "{0}{1,-52} Plays:{2,3}  Added:{3:yyyy-MM-dd}  Last:{4}  {5,10}  {6}" -f `
-                $numPrefix, $titleFull, $item.PlayCount, $item.DateAdded, $lastStr, $item.SizeHuman, $svcLabel
+            $flagMark  = if (Get-MatchConfidence $item) { '[?]' } else { '   ' }
+            $line      = "{0}{1}{2,-52} Plays:{3,3}  Added:{4:yyyy-MM-dd}  Last:{5}  {6,10}  {7}" -f `
+                $numPrefix, $flagMark, $titleFull, $item.PlayCount, $item.DateAdded, $lastStr, $item.SizeHuman, $svcLabel
             if ($WriteToLog) { Write-Log $line $color } else { Write-Host $line -ForegroundColor $color }
         }
         $footer = "  └── {0} item(s)  |  {1}" -f $group.Count, (Format-Bytes $groupBytes)
         if ($WriteToLog) { Write-Log $footer 'DarkCyan'; Write-Log '' }
         else { Write-Host $footer -ForegroundColor DarkCyan; Write-Host '' }
+    }
+
+    # [?] warning summary
+    $flaggedCount = @($Items | Where-Object { Get-MatchConfidence $_ }).Count
+    if ($flaggedCount -gt 0) {
+        $warnLine = "  [?] {0} item(s) marked [?] may fail *arr matching (no GUID or release-group filename)." -f $flaggedCount
+        if ($WriteToLog) { Write-Log $warnLine 'Yellow' } else { Write-Host $warnLine -ForegroundColor Yellow }
     }
 }
 
@@ -1437,6 +1464,35 @@ do {
             if ($selectionMode -eq 2) {
                 $itemsToDelete = Select-ItemsForDeletion -Items $itemsToDelete
                 if ($null -eq $itemsToDelete) { $Script:ReturnedToMenu = $true; break }
+            }
+
+            # ── Step 3.5: CONFIRM prompt if flagged items in selection ────────
+            $flaggedInSelection = @($itemsToDelete | Where-Object { Get-MatchConfidence $_ })
+            if ($flaggedInSelection.Count -gt 0) {
+                Write-Host ''
+                Write-Host ('  ' + ('=' * 66)) -ForegroundColor Yellow
+                Write-Host ("  [?] {0} item(s) in your selection may fail *arr matching:" -f $flaggedInSelection.Count) -ForegroundColor Yellow
+                foreach ($fi in $flaggedInSelection) {
+                    Write-Host ("      - {0}" -f $fi.Title) -ForegroundColor Yellow
+                }
+                Write-Host ''
+                Write-Host '  These items have no GUID or match a release-group filename pattern.' -ForegroundColor Yellow
+                Write-Host '  They may not be found in their *arr app and will be skipped with [NO MATCH].' -ForegroundColor Yellow
+                Write-Host ('  ' + ('=' * 66)) -ForegroundColor Yellow
+                Write-Host ''
+                $confirmFlagged = Read-Host '  Type CONFIRM to include them anyway, or press Enter to exclude them'
+                if ($confirmFlagged.ToUpper() -ne 'CONFIRM') {
+                    $itemsToDelete = @($itemsToDelete | Where-Object { -not (Get-MatchConfidence $_) })
+                    Write-Host ("  {0} flagged item(s) excluded. {1} item(s) remaining." -f $flaggedInSelection.Count, $itemsToDelete.Count) -ForegroundColor Cyan
+                    if ($itemsToDelete.Count -eq 0) {
+                        Write-Host '  No items remaining. Returning to menu.' -ForegroundColor Yellow
+                        Write-Host ''
+                        $Script:ReturnedToMenu = $true; break
+                    }
+                } else {
+                    Write-Host '  Flagged items included.' -ForegroundColor Cyan
+                }
+                Write-Host ''
             }
 
             # ── Step 4: choose mode ───────────────────────────────────────────

@@ -13,8 +13,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Per-library play count threshold overrides
 - Scheduled / unattended execution support (Windows Task Scheduler)
 - Size threshold filter (per media type -- movies, TV, music)
-- Pre-delete *arr match validation (warn before attempting deletion if
-  an item is unlikely to match, e.g. raw torrent filenames)
+- Logic test suite (TrashBoy_LogicTests.ps1) covering pure functions,
+  sanitized for public review
+
+---
+
+## [0.2.6] - 2026-05-23
+
+### Added
+- **Pre-delete *arr match validation** -- items that are likely to fail
+  *arr matching are now flagged with a `[?]` marker in the item list.
+  Detection heuristics: no GUID present in Plex metadata (most reliable),
+  or title matches a known release group pattern (RARBG, YTS, FGT, YIFY,
+  EZTV, etc.) or dot-separated uppercase filename format.
+  - A warning summary is shown at the bottom of any item list containing
+    flagged items: `[?] N item(s) marked [?] may fail *arr matching`.
+  - After item selection (step 3), if any flagged items are in the selection,
+    an explicit `CONFIRM` prompt is shown listing the affected titles. The
+    user must type `CONFIRM` to include them, or press Enter to exclude them.
+    Excluding reduces the selection; if nothing remains, returns to menu.
+  - Non-blocking: users retain full control and can always include flagged
+    items by typing `CONFIRM`.
+  - `Get-MatchConfidence` helper -- pure function, takes a scan result
+    object, returns `$true` if the item is likely to fail *arr matching.
 
 ---
 
