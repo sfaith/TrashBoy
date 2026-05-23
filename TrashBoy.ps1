@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.1.5
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.1.6
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -454,6 +454,7 @@ $Script:TautulliCache = @{}   # section_id -> hashtable of rating_key -> play da
 
 function Get-TautulliSectionCache ([string]$SectionId, [string]$LibraryType) {
     if (-not $Script:TautulliCache.ContainsKey($SectionId)) {
+        Clear-Progress
         Write-Host ("  Loading Tautulli play data for section {0}..." -f $SectionId) -ForegroundColor DarkGray
         $Script:TautulliCache[$SectionId] = Get-TautulliPlayData -SectionId $SectionId -LibraryType $LibraryType
         Write-Host ("    {0} item(s) loaded from Tautulli." -f $Script:TautulliCache[$SectionId].Count) -ForegroundColor DarkGray
@@ -493,11 +494,11 @@ function Get-PlayInfo ([string]$RatingKey, [string]$SectionId, [string]$LibraryT
 # ================================================================
 function Get-ItemSizeBytes ([object]$MediaNode) {
     $total = [long]0
-    if ($MediaNode.Media) {
+    if ($MediaNode.PSObject.Properties['Media'] -and $MediaNode.Media) {
         foreach ($m in $MediaNode.Media) {
-            if ($m.Part) {
+            if ($m.PSObject.Properties['Part'] -and $m.Part) {
                 foreach ($p in $m.Part) {
-                    if ($p.size) { $total += [long]$p.size }
+                    if ($p.PSObject.Properties['size'] -and $p.size) { $total += [long]$p.size }
                 }
             }
         }
@@ -605,7 +606,7 @@ function Get-UnwatchedFromLibrary {
                 # Plex fallback needs episode-level check
                 if (-not ($TautulliConfig.Enabled -and $Script:ConnectionStatus.Tautulli)) {
                     $epData   = Invoke-PlexApi -Path "/library/metadata/$($show.ratingKey)/allLeaves"
-                    $episodes = if ($epData -and $epData.MediaContainer.Metadata) {
+                    $episodes = if ($epData -and $epData.PSObject.Properties['MediaContainer'] -and $epData.MediaContainer.PSObject.Properties['Metadata']) {
                         $epData.MediaContainer.Metadata
                     } else { @() }
                     $maxEpViews = 0
@@ -618,10 +619,10 @@ function Get-UnwatchedFromLibrary {
 
                 if ($playInfo.PlayCount -gt $MaxPlays) { continue }
 
-                # Compute size from episodes (Plex path) or just use show-level data
+                # Compute size from episodes
                 $totalSize = [long]0
                 $epData2 = Invoke-PlexApi -Path "/library/metadata/$($show.ratingKey)/allLeaves"
-                if ($epData2 -and $epData2.MediaContainer.Metadata) {
+                if ($epData2 -and $epData2.PSObject.Properties['MediaContainer'] -and $epData2.MediaContainer.PSObject.Properties['Metadata'] -and $epData2.MediaContainer.Metadata) {
                     foreach ($ep in $epData2.MediaContainer.Metadata) {
                         $totalSize += Get-ItemSizeBytes $ep
                     }
@@ -677,7 +678,7 @@ function Get-UnwatchedFromLibrary {
                 # Plex fallback: scan tracks
                 if (-not ($TautulliConfig.Enabled -and $Script:ConnectionStatus.Tautulli)) {
                     $trackData = Invoke-PlexApi -Path "/library/metadata/$($artist.ratingKey)/allLeaves"
-                    $tracks    = if ($trackData -and $trackData.MediaContainer.Metadata) {
+                    $tracks    = if ($trackData -and $trackData.PSObject.Properties['MediaContainer'] -and $trackData.MediaContainer.PSObject.Properties['Metadata']) {
                         $trackData.MediaContainer.Metadata
                     } else { @() }
                     $maxTrackViews = 0
@@ -693,7 +694,7 @@ function Get-UnwatchedFromLibrary {
                 # Compute size from tracks
                 $totalSize = [long]0
                 $trackData2 = Invoke-PlexApi -Path "/library/metadata/$($artist.ratingKey)/allLeaves"
-                if ($trackData2 -and $trackData2.MediaContainer.Metadata) {
+                if ($trackData2 -and $trackData2.PSObject.Properties['MediaContainer'] -and $trackData2.MediaContainer.PSObject.Properties['Metadata'] -and $trackData2.MediaContainer.Metadata) {
                     foreach ($t in $trackData2.MediaContainer.Metadata) {
                         $totalSize += Get-ItemSizeBytes $t
                     }

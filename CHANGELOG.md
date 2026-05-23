@@ -17,6 +17,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.6] - 2026-05-22
+
+### Fixed
+- **Full strict mode audit** -- comprehensive pass over all Plex API property
+  accesses in the scan functions. Every access that could throw under
+  `Set-StrictMode -Version Latest` now uses `PSObject.Properties['name']`
+  guards. Specific fixes:
+  - `Get-ItemSizeBytes` -- `Media`, `Part`, and `size` all guarded
+  - `$epData.MediaContainer.Metadata` in show Plex fallback block
+  - `$epData2.MediaContainer.Metadata` in show size calculation
+  - `$trackData.MediaContainer.Metadata` in artist Plex fallback block
+  - `$trackData2.MediaContainer.Metadata` in artist size calculation
+    (this was the crash at artist 679/723 "Unknown Artist")
+- **Progress line collision with Tautulli cache load messages** --
+  `Clear-Progress` now called before the "Loading Tautulli play data"
+  and "N item(s) loaded" lines in `Get-TautulliSectionCache`, preventing
+  the scan progress line and the cache message from overwriting each other.
+
+---
+
 ## [0.1.5] - 2026-05-22
 
 ### Fixed
