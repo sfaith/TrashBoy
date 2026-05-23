@@ -270,21 +270,27 @@ Every scan and delete run writes a timestamped log to the `Logs\` subfolder next
 ## Troubleshooting
 
 **Config file not found**
+
 Copy `TrashBoy.config.example.ps1` to `TrashBoy.config.ps1` and fill in your values. TrashBoy prints setup instructions if the file is missing.
 
 **"Could not reach API" at startup**
+
 Confirm the `BaseUrl` matches what you use to access the app in a browser. Check the app is running and reachable from the machine running TrashBoy. Copy the API key fresh from Settings → General in the app.
 
 **Plex token errors**
+
 Tokens obtained via the Get Info → View XML method are temporary. If TrashBoy loses Plex access after a while, retrieve a fresh token. For a permanent token, follow the third-party app authentication guide in the Plex developer forum.
 
 **Item shows 0 plays in Tautulli but I know I watched it**
+
 Check that Tautulli was running and logging when you watched it — Tautulli can only record plays it observed in real time. It cannot import historical plays from before it was installed. Also check that history logging is enabled for the relevant library and user in Tautulli's settings.
 
 **No match found warnings during delete**
+
 TrashBoy matches items to \*arr using GUIDs (TMDB ID, TVDB ID, IMDb ID, MusicBrainz ID) sourced from Plex metadata, with a title fallback. If neither matches, the item is skipped. This usually means Plex and the \*arr app have different metadata for the item. Check the match manually in the \*arr UI.
 
 **Execution policy error**
+
 Use the `.bat` launcher, or run once as administrator:
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
