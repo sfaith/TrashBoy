@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.0
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.1
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -954,7 +954,8 @@ function Show-ItemList {
     param(
         [array]$Items,
         [string]$Header = 'ITEMS',
-        [bool]$WriteToLog = $false
+        [bool]$WriteToLog = $false,
+        [bool]$ShowNumbers = $false
     )
 
     if (-not $Items -or $Items.Count -eq 0) {
@@ -981,6 +982,7 @@ function Show-ItemList {
         Write-Host ''
     }
 
+    $itemNum = 0
     $grouped = $Items | Group-Object Library
     foreach ($group in $grouped) {
         $groupBytes = ($group.Group | Measure-Object -Property SizeBytes -Sum).Sum
@@ -990,19 +992,76 @@ function Show-ItemList {
             Write-Host ("  ┌── {0}" -f $group.Name) -ForegroundColor DarkCyan
         }
         foreach ($item in $group.Group) {
+            $itemNum++
             $lastStr   = if ($item.LastPlayed) { $item.LastPlayed.ToString('yyyy-MM-dd') } else { 'never    ' }
             $svcLabel  = if ($item.Service) { "[{0}]" -f $item.Service } else { '[unmapped]' }
             $yearStr   = if ($item.Year -gt 0) { "({0})" -f $item.Year } else { '      ' }
             $titleFull = '{0} {1}' -f $item.Title, $yearStr
             $color     = if ($item.PlayCount -eq 0) { 'White' } else { 'DarkYellow' }
-            $line      = "  │  {0,-52} Plays:{1,3}  Added:{2:yyyy-MM-dd}  Last:{3}  {4,10}  {5}" -f `
-                $titleFull, $item.PlayCount, $item.DateAdded, $lastStr, $item.SizeHuman, $svcLabel
+            $numPrefix = if ($ShowNumbers) { "{0,4}. " -f $itemNum } else { '  │  ' }
+            $line      = "{0}{1,-52} Plays:{2,3}  Added:{3:yyyy-MM-dd}  Last:{4}  {5,10}  {6}" -f `
+                $numPrefix, $titleFull, $item.PlayCount, $item.DateAdded, $lastStr, $item.SizeHuman, $svcLabel
             if ($WriteToLog) { Write-Log $line $color } else { Write-Host $line -ForegroundColor $color }
         }
         $footer = "  └── {0} item(s)  |  {1}" -f $group.Count, (Format-Bytes $groupBytes)
         if ($WriteToLog) { Write-Log $footer 'DarkCyan'; Write-Log '' }
         else { Write-Host $footer -ForegroundColor DarkCyan; Write-Host '' }
     }
+}
+
+# ================================================================
+#  SHARED: Manual item selection parser
+# ================================================================
+function Select-ItemsForDeletion {
+    param([array]$Items)
+
+    # Display numbered list
+    Show-ItemList -Items $Items -Header ('SELECT ITEMS TO DELETE -- {0} available' -f $Items.Count) -ShowNumbers $true
+
+    Write-Host '  Enter item numbers to include, separated by commas.' -ForegroundColor Cyan
+    Write-Host '  Ranges are supported (e.g. 1,3,5-8,12). Enter A to select all. Enter M to go back.' -ForegroundColor DarkGray
+    Write-Host ''
+
+    do {
+        $input = (Read-Host '  Selection').Trim()
+
+        if ($input.ToUpper() -eq 'M') { return $null }
+        if ($input.ToUpper() -eq 'A') { return $Items }
+
+        $selectedIndices = [System.Collections.Generic.List[int]]::new()
+        $parseError = $false
+
+        foreach ($token in ($input -split ',')) {
+            $token = $token.Trim()
+            if ($token -match '^(\d+)-(\d+)$') {
+                $from = [int]$Matches[1]; $to = [int]$Matches[2]
+                if ($from -lt 1 -or $to -gt $Items.Count -or $from -gt $to) {
+                    Write-Host ("  Invalid range '{0}' -- valid range is 1-{1}" -f $token, $Items.Count) -ForegroundColor Red
+                    $parseError = $true; break
+                }
+                for ($i = $from; $i -le $to; $i++) { if ($selectedIndices -notcontains $i) { $selectedIndices.Add($i) } }
+            } elseif ($token -match '^\d+$') {
+                $n = [int]$token
+                if ($n -lt 1 -or $n -gt $Items.Count) {
+                    Write-Host ("  Invalid number '{0}' -- valid range is 1-{1}" -f $token, $Items.Count) -ForegroundColor Red
+                    $parseError = $true; break
+                }
+                if ($selectedIndices -notcontains $n) { $selectedIndices.Add($n) }
+            } else {
+                Write-Host ("  Could not parse '{0}' -- use numbers, ranges (e.g. 1-5), or A for all" -f $token) -ForegroundColor Red
+                $parseError = $true; break
+            }
+        }
+
+        if (-not $parseError -and $selectedIndices.Count -gt 0) {
+            $selected = @($selectedIndices | Sort-Object | ForEach-Object { $Items[$_ - 1] })
+            Write-Host ''
+            Write-Host ("  {0} item(s) selected." -f $selected.Count) -ForegroundColor Cyan
+            return $selected
+        } elseif (-not $parseError) {
+            Write-Host '  No items selected. Enter at least one number, or M to go back.' -ForegroundColor Yellow
+        }
+    } while ($true)
 }
 
 # ================================================================
@@ -1322,13 +1381,25 @@ do {
             } else {
                 '{0} -- {1} item(s)' -f $selectedLib, $itemsToDelete.Count
             }
-            Show-ItemList -Items $itemsToDelete -Header ("ITEMS QUEUED FOR DELETION -- {0}" -f $scopeLabel)
+            Show-ItemList -Items $itemsToDelete -Header ("FLAGGED ITEMS -- {0}" -f $scopeLabel)
 
-            Write-Host '  Review the list above before choosing a delete mode.' -ForegroundColor Yellow
             Write-Host '  You will be asked to type YES before anything is deleted.' -ForegroundColor DarkGray
             Write-Host ''
 
-            # ── Step 3: choose mode ───────────────────────────────────────────
+            # ── Step 3: selection mode ────────────────────────────────────────
+            $selectionMode = Select-SubMode 'Select items to delete:' @(
+                ("All {0} item(s) listed above" -f $itemsToDelete.Count)
+                'Manually select items by number'
+            ) -Title 'Delete Unwatched'
+            if ($selectionMode -eq  0) { $Script:ReturnedToMenu = $true; break }
+            if ($selectionMode -eq -1) { $Script:QuitRequested  = $true; break }
+
+            if ($selectionMode -eq 2) {
+                $itemsToDelete = Select-ItemsForDeletion -Items $itemsToDelete
+                if ($null -eq $itemsToDelete) { $Script:ReturnedToMenu = $true; break }
+            }
+
+            # ── Step 4: choose mode ───────────────────────────────────────────
             $modeChoice = Select-SubMode 'Select delete mode:' @(
                 'Remove from *arr only  -- item removed from app, files stay on disk'
                 'Remove from *arr + delete files  -- PERMANENT, files gone from disk'

@@ -11,12 +11,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Planned
 - CSV export of scan results
 - Per-library play count threshold overrides
-- Interactive item-by-item selection before deletion
 - Scheduled / unattended execution support (Windows Task Scheduler)
 - Filter by minimum age (only flag items added more than N days ago)
 - Size threshold filter (only flag items above a minimum file size)
 - Pre-delete *arr match validation (warn before attempting deletion if
   an item is unlikely to match, e.g. raw torrent filenames)
+
+---
+
+## [0.2.1] - 2026-05-22
+
+### Added
+- **Manual item selection before deletion** -- after reviewing the flagged
+  item list, the user can now choose between deleting all items or manually
+  selecting a subset by number. Selection supports individual numbers,
+  comma-separated lists, and ranges (e.g. `1,3,5-8,12`). `A` selects all.
+  `M` returns to the menu. Invalid input is rejected with a clear error and
+  re-prompted. The final delete confirmation (`YES`) reflects only the
+  selected items.
+- **`Select-ItemsForDeletion` helper** -- parses the comma/range selection
+  input and returns the chosen subset of items.
+- **`Show-ItemList` `ShowNumbers` parameter** -- when `$true`, each item row
+  is prefixed with a sequential number (right-aligned, 4 chars) instead of
+  the `│` tree character, enabling the selection prompt to work across
+  library groups naturally.
+
+### Changed
+- Delete flow step labels updated: Step 2 header changed from
+  `ITEMS QUEUED FOR DELETION` to `FLAGGED ITEMS` since items are not yet
+  queued at that point -- the selection step comes after.
 
 ---
 
