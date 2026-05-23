@@ -1,34 +1,30 @@
 # ================================================================
-#  TrashBoy.config.example.ps1  |  Configuration Template  |  v0.1.1
+#  TrashBoy.config.example.ps1  |  Configuration Template  |  v0.2.4
 #
-#  Copy this file to TrashBoy.config.ps1 and fill in your
-#  own values before running TrashBoy for the first time.
-#
-#  TrashBoy.config.ps1 is excluded from source control via
-#  .gitignore so your API keys and tokens stay private.
-#
-#  See README.md for full configuration documentation.
+#  Copy this file to TrashBoy.config.ps1 and fill in your values.
+#  TrashBoy.config.ps1 is excluded from source control via .gitignore
+#  so your API keys and tokens stay private.
 # ================================================================
 
 # ----------------------------------------------------------------
 #  PLEX
 #
-#  BaseUrl  : URL used to reach your Plex Media Server.
-#             Use http://localhost:32400 if running on the same machine.
-#             Use http://HOSTNAME:32400 or http://IP:32400 for remote.
+#  BaseUrl : URL used to reach your Plex Media Server.
+#            Use http://localhost:32400 if running on the same machine.
+#            Use http://HOSTNAME:32400 or http://IP:32400 for remote.
 #
-#  Token    : Your Plex authentication token (X-Plex-Token).
+#  Token   : Your Plex authentication token (X-Plex-Token).
 #
 #  HOW TO FIND YOUR PLEX TOKEN:
 #    1. Open Plex Web in a browser and sign in
 #    2. Browse to any item in your library and click the (...) menu
 #    3. Click "Get Info", then "View XML" at the bottom of the dialog
-#    4. Your browser will open a URL ending in ?X-Plex-Token=YOURTOKEN
-#    5. Copy the value after 'X-Plex-Token=' -- that is your token
+#    4. Your browser opens a URL ending in ?X-Plex-Token=YOURTOKEN
+#    5. Copy the value after X-Plex-Token= -- that is your token
 #
-#  Alternative (Windows): open
-#    %LOCALAPPDATA%\Plex Media Server\Preferences.xml
-#  and look for the PlexOnlineToken attribute.
+#  Alternative (Windows server):
+#    Open %LOCALAPPDATA%\Plex Media Server\Preferences.xml
+#    and look for the PlexOnlineToken attribute.
 #
 #  Official guide: https://support.plex.tv/articles/204059436
 # ----------------------------------------------------------------
@@ -41,20 +37,22 @@ $PlexConfig = @{
 #  TAUTULLI  (optional, but recommended)
 #
 #  When enabled, TrashBoy uses Tautulli as its play-data source
-#  instead of Plex's built-in viewCount. This gives you:
+#  instead of Plex's built-in viewCount. Benefits:
 #    - Play counts from ALL users, not just the server owner
+#    - MinWatchedPercent threshold filters out accidental short plays
 #    - Accurate last-played timestamps across all users
-#    - MinWatchedPercent threshold so short accidental starts
-#      are not counted as a full watch
 #
 #  Set Enabled = $false to fall back to Plex viewCount only.
 #
 #  BaseUrl           : URL you use to access Tautulli in a browser.
 #                      Default port is 8181.
-#  ApiKey            : Tautulli > Settings > Web Interface > API Key
-#  MinWatchedPercent : A play only counts if the user watched at least
-#                      this percentage of the item. Default 50.
-#                      Set to 0 to count any play no matter how short.
+#
+#  ApiKey            : Tautulli > Settings > Web Interface >
+#                      scroll to the bottom > API Key
+#
+#  MinWatchedPercent : A play only counts if the user watched at
+#                      least this percentage of the item.
+#                      Default 50. Set to 0 to count any play.
 # ----------------------------------------------------------------
 $TautulliConfig = @{
     Enabled           = $true
@@ -66,9 +64,8 @@ $TautulliConfig = @{
 # ----------------------------------------------------------------
 #  RADARR
 #
-#  Enabled  : $true to use Radarr for deletions, $false to skip.
-#  BaseUrl  : URL you use to access Radarr in a browser.
-#  ApiKey   : Settings > General > Security > API Key in Radarr.
+#  Enabled : $true to use Radarr for deletions, $false to skip.
+#  ApiKey  : Radarr > Settings > General > Security > API Key
 # ----------------------------------------------------------------
 $RadarrConfig = @{
     Enabled = $true
@@ -79,9 +76,8 @@ $RadarrConfig = @{
 # ----------------------------------------------------------------
 #  SONARR
 #
-#  Enabled  : $true to use Sonarr for deletions, $false to skip.
-#  BaseUrl  : URL you use to access Sonarr in a browser.
-#  ApiKey   : Settings > General > Security > API Key in Sonarr.
+#  Enabled : $true to use Sonarr for deletions, $false to skip.
+#  ApiKey  : Sonarr > Settings > General > Security > API Key
 # ----------------------------------------------------------------
 $SonarrConfig = @{
     Enabled = $true
@@ -92,9 +88,8 @@ $SonarrConfig = @{
 # ----------------------------------------------------------------
 #  LIDARR
 #
-#  Enabled  : $true to use Lidarr for deletions, $false to skip.
-#  BaseUrl  : URL you use to access Lidarr in a browser.
-#  ApiKey   : Settings > General > Security > API Key in Lidarr.
+#  Enabled : $true to use Lidarr for deletions, $false to skip.
+#  ApiKey  : Lidarr > Settings > General > Security > API Key
 # ----------------------------------------------------------------
 $LidarrConfig = @{
     Enabled = $true
@@ -112,19 +107,19 @@ $LidarrConfig = @{
 #    Active entry    -- 'Library Name' = 'Service'
 #    Commented out   -- prefix with # to disable without deleting
 #    Add new library -- copy any active line, change name and service
-#
-#  Libraries not listed here will appear in scan reports but will be
-#  skipped during deletion (no *arr service to call).
+#    Unmapped        -- libraries not listed here are skipped entirely
+#                       at scan time. Nothing is reported or deleted
+#                       for libraries that are not in this map.
 #
 #  Library names are case-sensitive and must match Plex exactly.
-#  Run TrashBoy and choose Settings (option 3) to see all libraries
-#  Plex is currently reporting.
+#  Run TrashBoy and choose Settings (option 3) to see all library
+#  names Plex is currently reporting, then copy them here exactly.
 # ----------------------------------------------------------------
 $LibraryMap = @{
     'TV Shows'       = 'Sonarr'
     'Movies'         = 'Radarr'
     'Documentaries'  = 'Radarr'   # Change to 'Sonarr' for TV-style documentary series
-    'Holiday_Movies' = 'Radarr'
+    'Holiday Movies' = 'Radarr'
     'Short Films'    = 'Radarr'
     'Music'          = 'Lidarr'
 #   'Music Videos'   = 'Radarr'   # Uncomment to include
@@ -134,12 +129,13 @@ $LibraryMap = @{
 # ----------------------------------------------------------------
 #  SCAN SETTINGS
 #
-#  MaxPlayCount : Default threshold -- items with this many plays or
-#                fewer are flagged as unwatched. TrashBoy will prompt
-#                you to accept or override this value at scan time.
-#                0 = never played, 1 = played once or never, etc.
+#  MaxPlayCount : Default threshold -- items with this many plays
+#                or fewer are flagged. TrashBoy will prompt you to
+#                accept or override this at scan time without
+#                touching this file.
+#                0 = never played. 1 = played once or never. Etc.
 #                When Tautulli is enabled, only plays meeting
-#                MinWatchedPercent are counted toward this total.
+#                MinWatchedPercent count toward this total.
 #
 #  SortBy       : Default sort order for the report.
 #                   PlayCount  -- fewest plays first, then oldest

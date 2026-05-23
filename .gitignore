@@ -3,6 +3,10 @@
 # User config (contains API keys and tokens -- never commit this)
 TrashBoy.config.ps1
 
+# Local Claude context file -- not for public repo
+CLAUDE.md
+NewChatPrompt.md
+
 # Log files
 Logs/
 *.log
