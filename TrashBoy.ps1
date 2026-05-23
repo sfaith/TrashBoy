@@ -152,7 +152,11 @@ function Write-SectionHeader ([string]$Title) {
 
 function Write-Progress2 ([string]$Label, [int]$Current, [int]$Total, [string]$Item = '') {
     $truncated = if ($Item.Length -gt 50) { $Item.Substring(0, 47) + '...' } else { $Item }
-    $line = '  {0} {1} / {2}  ({3})' -f $Label, $Current, $Total, $truncated
+    $line = if ($Total -gt 0) {
+        '  {0} {1} / {2}  ({3})' -f $Label, $Current, $Total, $truncated
+    } else {
+        '  {0} {1}  ({2})' -f $Label, $Current, $truncated
+    }
     Write-Host ("`r{0,-90}" -f $line) -NoNewline -ForegroundColor DarkGray
 }
 
