@@ -1,5 +1,5 @@
 # ================================================================
-#  TrashBoy.config.example.ps1  |  Configuration Template  |  v0.2.4
+#  TrashBoy.config.example.ps1  |  Configuration Template  |  v0.2.5
 #
 #  Copy this file to TrashBoy.config.ps1 and fill in your values.
 #  TrashBoy.config.ps1 is excluded from source control via .gitignore
@@ -57,7 +57,7 @@ $PlexConfig = @{
 $TautulliConfig = @{
     Enabled           = $true
     BaseUrl           = 'http://localhost:8181'   # CHANGE ME
-    ApiKey            = 'YOUR_TAUTULLI_API_KEY'   # CHANGE ME
+    ApiKey            = 'YOUR_TAUTULLI_API_KEY'   # CHANGE ME -- Tautulli > Settings > Web Interface > scroll to bottom > API Key
     MinWatchedPercent = 50
 }
 
@@ -137,6 +137,14 @@ $LibraryMap = @{
 #                When Tautulli is enabled, only plays meeting
 #                MinWatchedPercent count toward this total.
 #
+#  MinAgeDays   : Items added within this many days are excluded
+#                from scan results, even if unwatched. Protects
+#                recently-added media that hasn't had time to be
+#                watched yet. Override at scan time without touching
+#                this file.
+#                0 = disabled (show all items regardless of age).
+#                Default 365 = exclude anything added in the last year.
+#
 #  SortBy       : Default sort order for the report.
 #                   PlayCount  -- fewest plays first, then oldest
 #                   DateAdded  -- oldest additions first
@@ -145,5 +153,6 @@ $LibraryMap = @{
 # ----------------------------------------------------------------
 $ScanConfig = @{
     MaxPlayCount = 0
+    MinAgeDays   = 365
     SortBy       = 'PlayCount'   # PlayCount | DateAdded | Title | Size
 }

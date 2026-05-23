@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.4
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.5
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -120,6 +120,7 @@ if ($ScanConfig.ContainsKey('MaxViewCount') -and -not $ScanConfig.ContainsKey('M
 }
 if (-not $ScanConfig.ContainsKey('MaxPlayCount')) { $ScanConfig.MaxPlayCount = 0          }
 if (-not $ScanConfig.ContainsKey('SortBy'))       { $ScanConfig.SortBy       = 'PlayCount' }
+if (-not $ScanConfig.ContainsKey('MinAgeDays'))   { $ScanConfig.MinAgeDays   = 365         }
 
 # ================================================================
 #  SHARED HELPERS
@@ -517,22 +518,24 @@ function Get-GuidValue ([object]$Item, [string]$Scheme) {
 }
 
 function Get-UnwatchedFromLibrary {
-    param([PSObject]$Library, [int]$MaxPlays)
+    param([PSObject]$Library, [int]$MaxPlays, [int]$MinAgeDays = 0)
 
-    $libKey   = $Library.key        # Plex section id
+    $libKey   = $Library.key
     $libName  = $Library.title
-    $libType  = $Library.type       # movie | show | artist | photo
+    $libType  = $Library.type
     $service  = if ($LibraryMap.ContainsKey($libName)) { $LibraryMap[$libName] } else { $null }
     $results  = [System.Collections.Generic.List[PSObject]]::new()
+    $skippedAge = 0
+    $cutoffDate = if ($MinAgeDays -gt 0) { [DateTime]::Now.AddDays(-$MinAgeDays) } else { $null }
 
     switch ($libType) {
 
         # ── MOVIES ────────────────────────────────────────────────────────────
         'movie' {
             $data = Invoke-PlexApi -Path "/library/sections/$libKey/all"
-            if (-not $data) { return $results }
+            if (-not $data) { return @{ Flagged = $results; SkippedAge = $skippedAge } }
             $items = $data.MediaContainer.Metadata
-            if (-not $items) { return $results }
+            if (-not $items) { return @{ Flagged = $results; SkippedAge = $skippedAge } }
 
             $idx = 0
             foreach ($item in $items) {
@@ -555,6 +558,9 @@ function Get-UnwatchedFromLibrary {
 
                 $addedAt   = [DateTimeOffset]::FromUnixTimeSeconds([long]$item.addedAt).LocalDateTime
                 $sizeBytes = Get-ItemSizeBytes $item
+
+                # Age filter -- skip items added more recently than cutoff
+                if ($cutoffDate -and $addedAt -gt $cutoffDate) { $skippedAge++; continue }
 
                 $results.Add([PSCustomObject]@{
                     Library       = $libName
@@ -582,9 +588,9 @@ function Get-UnwatchedFromLibrary {
         # ── TV SHOWS ──────────────────────────────────────────────────────────
         'show' {
             $data = Invoke-PlexApi -Path "/library/sections/$libKey/all"
-            if (-not $data) { return $results }
+            if (-not $data) { return @{ Flagged = $results; SkippedAge = $skippedAge } }
             $shows = $data.MediaContainer.Metadata
-            if (-not $shows) { return $results }
+            if (-not $shows) { return @{ Flagged = $results; SkippedAge = $skippedAge } }
 
             $idx = 0
             foreach ($show in $shows) {
@@ -632,6 +638,9 @@ function Get-UnwatchedFromLibrary {
 
                 $addedAt = [DateTimeOffset]::FromUnixTimeSeconds([long]$show.addedAt).LocalDateTime
 
+                # Age filter -- skip items added more recently than cutoff
+                if ($cutoffDate -and $addedAt -gt $cutoffDate) { $skippedAge++; continue }
+
                 $results.Add([PSCustomObject]@{
                     Library       = $libName
                     Type          = 'TVShow'
@@ -658,9 +667,9 @@ function Get-UnwatchedFromLibrary {
         # ── MUSIC ─────────────────────────────────────────────────────────────
         'artist' {
             $data = Invoke-PlexApi -Path "/library/sections/$libKey/all"
-            if (-not $data) { return $results }
+            if (-not $data) { return @{ Flagged = $results; SkippedAge = $skippedAge } }
             $artists = $data.MediaContainer.Metadata
-            if (-not $artists) { return $results }
+            if (-not $artists) { return @{ Flagged = $results; SkippedAge = $skippedAge } }
 
             $idx = 0
             foreach ($artist in $artists) {
@@ -704,6 +713,9 @@ function Get-UnwatchedFromLibrary {
 
                 $addedAt = [DateTimeOffset]::FromUnixTimeSeconds([long]$artist.addedAt).LocalDateTime
 
+                # Age filter -- skip items added more recently than cutoff
+                if ($cutoffDate -and $addedAt -gt $cutoffDate) { $skippedAge++; continue }
+
                 $results.Add([PSCustomObject]@{
                     Library       = $libName
                     Type          = 'Artist'
@@ -730,7 +742,7 @@ function Get-UnwatchedFromLibrary {
         default { }  # photo libraries etc -- silently skip
     }
 
-    return $results
+    return @{ Flagged = $results; SkippedAge = $skippedAge }
 }
 
 # ================================================================
@@ -838,6 +850,21 @@ function Invoke-UnwatchedScan {
             Write-Host ("  Invalid input -- using config default: {0}" -f $effectiveMaxPlays) -ForegroundColor Yellow
         }
     }
+    # ── Runtime override for MinAgeDays ───────────────────────────────────────
+    $effectiveMinAge = $ScanConfig.MinAgeDays
+    Write-Host ''
+    $ageLabel = if ($effectiveMinAge -eq 0) { '0 (disabled)' } else { $effectiveMinAge.ToString() }
+    Write-Host ("  Minimum age in days       [{0}] -- press Enter to accept, or type a number to override (0 = disabled):" -f $ageLabel) -ForegroundColor Cyan
+    $ageInput = Read-Host '  Min age'
+    if ($ageInput.Trim() -ne '') {
+        $parsedAge = 0
+        if ([int]::TryParse($ageInput.Trim(), [ref]$parsedAge) -and $parsedAge -ge 0) {
+            $effectiveMinAge = $parsedAge
+            Write-Host ("  Using override: {0}" -f $(if ($effectiveMinAge -eq 0) { '0 (disabled)' } else { $effectiveMinAge })) -ForegroundColor Yellow
+        } else {
+            Write-Host ("  Invalid input -- using config default: {0}" -f $effectiveMinAge) -ForegroundColor Yellow
+        }
+    }
     # ──────────────────────────────────────────────────────────────────────────
 
     Write-Log ''
@@ -848,6 +875,7 @@ function Invoke-UnwatchedScan {
     Write-Log ''
     Write-Log ("  Play data source   : {0}" -f $dataSource) 'White'
     Write-Log ("  Max play count     : {0}{1}" -f $effectiveMaxPlays, $(if ($effectiveMaxPlays -ne $ScanConfig.MaxPlayCount) { '  (overridden from config)' } else { '' })) 'White'
+    Write-Log ("  Min age (days)     : {0}{1}" -f $(if ($effectiveMinAge -eq 0) { 'disabled' } else { $effectiveMinAge }), $(if ($effectiveMinAge -ne $ScanConfig.MinAgeDays) { '  (overridden from config)' } else { '' })) 'White'
     Write-Log ("  Sort by            : {0}" -f $ScanConfig.SortBy) 'White'
     Write-Log ''
 
@@ -888,18 +916,21 @@ function Invoke-UnwatchedScan {
     }
 
     Write-Log ''
-    Write-SectionHeader ('SCANNING -- plays <= {0}' -f $effectiveMaxPlays)
+    Write-SectionHeader ('SCANNING -- plays <= {0}  |  min age: {1}' -f $effectiveMaxPlays, $(if ($effectiveMinAge -eq 0) { 'disabled' } else { "$effectiveMinAge days" }))
     Write-Log ''
 
-    $allUnwatched = [System.Collections.Generic.List[PSObject]]::new()
+    $allUnwatched  = [System.Collections.Generic.List[PSObject]]::new()
+    $totalSkippedAge = 0
 
     foreach ($lib in $mappedLibraries) {
         Write-Log ("  {0}  [{1}]" -f $lib.title, $lib.type) 'White'
-        $items = Get-UnwatchedFromLibrary -Library $lib -MaxPlays $effectiveMaxPlays
-        $count = $items.Count
-        foreach ($i in $items) { $allUnwatched.Add($i) }
+        $items = Get-UnwatchedFromLibrary -Library $lib -MaxPlays $effectiveMaxPlays -MinAgeDays $effectiveMinAge
+        $count = $items.Flagged.Count
+        $skipped = $items.SkippedAge
+        $totalSkippedAge += $skipped
+        foreach ($i in $items.Flagged) { $allUnwatched.Add($i) }
         $color = if ($count -gt 0) { 'Yellow' } else { 'Green' }
-        Write-Log ("    {0} unwatched item(s) found" -f $count) $color
+        Write-Log ("    {0} unwatched item(s) found{1}" -f $count, $(if ($skipped -gt 0) { "  |  $skipped skipped (added within $effectiveMinAge days)" } else { '' })) $color
     }
 
     $sorted = switch ($ScanConfig.SortBy) {
@@ -925,6 +956,9 @@ function Invoke-UnwatchedScan {
     Write-Log ''
     Write-Log ("  Play data source        : {0}" -f $dataSource) 'DarkGray'
     Write-Log ("  Total reclaimable space : {0}" -f (Format-Bytes $totalBytes)) 'Cyan'
+    if ($totalSkippedAge -gt 0) {
+        Write-Log ("  Skipped (too new)       : {0} item(s) added within {1} days" -f $totalSkippedAge, $effectiveMinAge) 'DarkGray'
+    }
     Write-Log ''
 
     $grouped = $sorted | Group-Object Library

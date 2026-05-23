@@ -12,10 +12,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - CSV export of scan results
 - Per-library play count threshold overrides
 - Scheduled / unattended execution support (Windows Task Scheduler)
-- Filter by minimum age (only flag items added more than N days ago)
-- Size threshold filter (only flag items above a minimum file size)
+- Size threshold filter (per media type -- movies, TV, music)
 - Pre-delete *arr match validation (warn before attempting deletion if
   an item is unlikely to match, e.g. raw torrent filenames)
+
+---
+
+## [0.2.5] - 2026-05-23
+
+### Added
+- **Minimum age filter (`MinAgeDays`)** -- items added within the
+  configured number of days are excluded from scan results even if
+  unwatched. Protects recently-added media that hasn't had time to be
+  watched. Default is 365 days (one year). Set to 0 to disable and
+  show all items regardless of age.
+- **Runtime override for `MinAgeDays`** -- at scan start, TrashBoy
+  prompts to accept the configured value or enter a one-time override,
+  consistent with the `MaxPlayCount` override pattern.
+- **Skipped item reporting** -- the per-library scan summary line now
+  shows how many items were skipped due to the age filter
+  (e.g. `3 flagged  |  12 skipped (added within 365 days)`). The
+  report header also shows a total skipped count when any items were
+  filtered.
+- **`MinAgeDays` in report header** -- the scan report now shows the
+  active minimum age alongside play count threshold and data source.
+
+### Changed
+- `Get-UnwatchedFromLibrary` now accepts a `MinAgeDays` parameter and
+  returns a hashtable `@{ Flagged = ...; SkippedAge = ... }` instead
+  of a bare list, allowing the caller to track skipped counts per library.
+- `ScanConfig` defaults block in the main script now seeds `MinAgeDays`
+  to 365 if not present in the config file (backward compatible).
+- SCANNING section header now shows both the play count threshold and
+  the active minimum age.
+
+### Housekeeping
+- `TrashBoy.config.example.ps1`: Tautulli `ApiKey` location hint moved
+  from the header comment block to inline on the `ApiKey` field, consistent
+  with the `*arr` config sections.
+- Config version bumped to v0.2.5 in both config files.
 
 ---
 
