@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.2
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.3
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -179,7 +179,7 @@ function Confirm-LiveAction ([string]$Warning) {
     Write-Log '  This action cannot be undone. A log will be saved next to this script.' 'Yellow'
     Write-Log ''
     $confirm = Read-Host '  Type YES to proceed, or anything else to abort'
-    if ($confirm -ne 'YES') {
+    if ($confirm.ToUpper() -ne 'YES') {
         Write-Log '  Aborted. No changes were made.' 'Yellow'
         return $false
     }
@@ -1148,9 +1148,9 @@ function Invoke-Delete {
 
     # ── Plex library rescan ────────────────────────────────────────────────────
     if ($deletedItems.Count -gt 0 -and $WithFiles) {
-        $sectionsToRefresh = $deletedItems |
+        $sectionsToRefresh = @($deletedItems |
             ForEach-Object { $_.PlexSectionId } |
-            Sort-Object -Unique
+            Sort-Object -Unique)
 
         Write-Log ''
         Write-Log ("  Notifying Plex to rescan {0} library section(s)..." -f $sectionsToRefresh.Count) 'Cyan'

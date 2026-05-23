@@ -16,6 +16,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Size threshold filter (only flag items above a minimum file size)
 - Pre-delete *arr match validation (warn before attempting deletion if
   an item is unlikely to match, e.g. raw torrent filenames)
+- Fix encoding corruption on artist names with special characters
+  (ö, ü, ô etc.) in report display
+
+---
+
+## [0.2.3] - 2026-05-22
+
+### Fixed
+- **Plex rescan crash after single-library deletion** -- `Sort-Object -Unique`
+  on a pipeline with one item returns the item itself rather than a
+  one-element array. Calling `.Count` on a plain string throws under
+  `Set-StrictMode`. Wrapped the assignment in `@()` to guarantee an array
+  regardless of how many sections are returned. Deletion itself succeeded;
+  only the rescan notification was affected.
 
 ---
 
