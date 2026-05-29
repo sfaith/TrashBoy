@@ -1,6 +1,6 @@
 # TrashBoy — Plex Unwatched Media Cleanup
 
-![Version](https://img.shields.io/badge/version-0.2.6-blue) ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey) ![PowerShell](https://img.shields.io/badge/powershell-5.1%2B-blue) ![License](https://img.shields.io/badge/license-GPL--3.0-green)
+![Version](https://img.shields.io/badge/version-0.2.8-blue) ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey) ![PowerShell](https://img.shields.io/badge/powershell-5.1%2B-blue) ![License](https://img.shields.io/badge/license-GPL--3.0-green)
 
 *Working title — may eventually be merged into [FolderBoy](https://github.com/sfaith/FolderBoy)*
 
