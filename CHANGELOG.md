@@ -19,6 +19,23 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.8] - 2026-05-29
+
+### Fixed
+- **Dual-source play count in `Get-PlayInfo`** -- when Tautulli is enabled,
+  TrashBoy now takes the higher of Tautulli's `play_count` and Plex's
+  `viewCount` rather than trusting Tautulli exclusively. Guards against
+  Tautulli data gaps (e.g. `rating_key` changes after a library refresh)
+  causing watched items to be flagged as unwatched.
+- **`Get-PlayInfo` Tautulli cache miss** -- when an item has no Tautulli
+  record, TrashBoy now falls back to Plex `viewCount` rather than returning
+  0 plays. A missing cache entry may indicate a key mismatch, not a true
+  zero-play item.
+- **`$input` reserved variable** in `Select-ItemsForDeletion` -- renamed to
+  `$rawInput` to avoid shadowing the PS 5.1 automatic pipeline variable.
+
+---
+
 ## [0.2.7] - 2026-05-29
 
 ### Fixed

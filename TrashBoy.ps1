@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.7
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.8
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -439,10 +439,16 @@ function Get-PlayInfo ([string]$RatingKey, [string]$SectionId, [string]$LibraryT
         if ($cache.ContainsKey($RatingKey)) {
             $entry = $cache[$RatingKey]
             $rawCount = [int]$entry.PlayCount
-            return @{ PlayCount = $rawCount; LastPlayed = $entry.LastPlayed }
+            # Take the higher of Tautulli and Plex counts -- if either source says it was
+            # watched, trust it. Guards against Tautulli data gaps (e.g. rating_key changes
+            # after a library refresh) causing watched items to be flagged as unwatched.
+            $effectiveCount = [Math]::Max($rawCount, $PlexViewCount)
+            return @{ PlayCount = $effectiveCount; LastPlayed = $entry.LastPlayed }
         }
-        # Item not in Tautulli (never played) -- treat as 0
-        return @{ PlayCount = 0; LastPlayed = $null }
+        # Item not in Tautulli cache -- fall back to Plex viewCount rather than assuming
+        # zero plays. A missing Tautulli record could mean the rating_key changed, not
+        # that the item was never watched.
+        return @{ PlayCount = $PlexViewCount; LastPlayed = $PlexLastViewed }
     }
 
     # Plex fallback
@@ -1043,15 +1049,15 @@ function Select-ItemsForDeletion {
     Write-Host ''
 
     do {
-        $input = (Read-Host '  Selection').Trim()
+        $rawInput = (Read-Host '  Selection').Trim()
 
-        if ($input.ToUpper() -eq 'M') { return $null }
-        if ($input.ToUpper() -eq 'A') { return $Items }
+        if ($rawInput.ToUpper() -eq 'M') { return $null }
+        if ($rawInput.ToUpper() -eq 'A') { return $Items }
 
         $selectedIndices = [System.Collections.Generic.List[int]]::new()
         $parseError = $false
 
-        foreach ($token in ($input -split ',')) {
+        foreach ($token in ($rawInput -split ',')) {
             $token = $token.Trim()
             if ($token -match '^(\d+)-(\d+)$') {
                 $from = [int]$Matches[1]; $to = [int]$Matches[2]
@@ -1290,7 +1296,7 @@ function Show-MainMenu {
         }
     }
 
-    if ($Script:LastScanResults -ne $null) {
+    if ($null -ne $Script:LastScanResults) {
         Write-Host ''
         $reclaimable = Format-Bytes (($Script:LastScanResults | Measure-Object -Property SizeBytes -Sum).Sum)
         Write-Host ("  Last scan: {0} item(s) flagged, {1} reclaimable" -f `
