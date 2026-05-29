@@ -19,6 +19,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.7] - 2026-05-29
+
+### Fixed
+- Remove `Get-TautulliHistoryPlayCount` and trust `play_count` from
+  `get_library_media_info` directly. Eliminates false positives caused by
+  per-session history fragmentation and admin-scoped `get_history` responses.
+  284 false positives eliminated in live scan (3.1 TB recovered).
+
+---
+
 ## [0.2.6] - 2026-05-23
 
 ### Added

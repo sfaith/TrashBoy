@@ -1,5 +1,5 @@
 # ================================================================
-#  TrashBoy.config.example.ps1  |  Configuration Template  |  v0.2.6
+#  TrashBoy.config.example.ps1  |  Configuration Template  |  v0.2.7
 #
 #  Copy this file to TrashBoy.config.ps1 and fill in your values.
 #  TrashBoy.config.ps1 is excluded from source control via .gitignore

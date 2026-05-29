@@ -1,5 +1,5 @@
 ﻿# ================================================================
-#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.6
+#  TrashBoy.ps1  |  Plex Unwatched Media Cleanup  |  v0.2.7
 #  https://github.com/sfaith/TrashBoy
 #
 #  Identifies unwatched or rarely watched media across your Plex
@@ -313,47 +313,6 @@ function Get-TautulliPlayData ([string]$SectionId, [string]$LibraryType) {
     return $playData
 }
 
-# For TV shows: Tautulli's get_library_media_info at the show level returns
-# aggregate play counts across all episodes. We use grandparent_rating_key
-# matching via get_history to check per-episode completion, but that is
-# expensive at scale. Instead we use the show-level play_count from
-# get_library_media_info (section_type=show returns show rows), and trust
-# that a show with play_count > 0 means at least one episode was watched.
-# The MinWatchedPercent check is applied at the history level for movies;
-# for shows we accept the show-level count and let the threshold filter.
-
-function Get-TautulliHistoryPlayCount ([string]$RatingKey, [string]$MediaType) {
-    # Returns the count of history entries for this item that meet MinWatchedPercent.
-    # Used to validate movie play counts against the completion threshold.
-    $minPct  = [int]$TautulliConfig.MinWatchedPercent
-    $start   = 0
-    $pgSize  = 100
-    $qualifying = 0
-    $total   = $null
-
-    do {
-        $params = @{
-            rating_key = $RatingKey
-            length     = $pgSize
-            start      = $start
-        }
-        $page = Invoke-TautulliApi -Command 'get_history' -Params $params
-        if (-not $page) { break }
-
-        if ($null -eq $total) { $total = [int]$page.recordsTotal }
-        $rows = $page.data
-        if (-not $rows -or $rows.Count -eq 0) { break }
-
-        foreach ($row in $rows) {
-            $pct = if ($row.percent_complete) { [int]$row.percent_complete } else { 0 }
-            if ($pct -ge $minPct) { $qualifying++ }
-        }
-        $start += $rows.Count
-    } while ($start -lt $total)
-
-    return $qualifying
-}
-
 # ================================================================
 #  *ARR API
 # ================================================================
@@ -455,7 +414,8 @@ Invoke-ConnectionCheck
 
 # Returns: @{ PlayCount = int; LastPlayed = DateTime|null }
 # Source is Tautulli when enabled and connected, Plex viewCount otherwise.
-# For Tautulli movie plays, applies MinWatchedPercent via get_history.
+# For Tautulli movie plays, trusts play_count from get_library_media_info.
+# MinWatchedPercent is enforced by Tautulli itself -- set it in Tautulli Settings > History Logging.
 # For Tautulli TV/music, uses show/artist-level play_count from get_library_media_info.
 $Script:TautulliCache = @{}   # section_id -> hashtable of rating_key -> play data
 
@@ -479,13 +439,6 @@ function Get-PlayInfo ([string]$RatingKey, [string]$SectionId, [string]$LibraryT
         if ($cache.ContainsKey($RatingKey)) {
             $entry = $cache[$RatingKey]
             $rawCount = [int]$entry.PlayCount
-
-            # For movies: validate against MinWatchedPercent via history
-            # For shows/artists: trust the aggregate count from get_library_media_info
-            if ($LibraryType -eq 'movie' -and $rawCount -gt 0 -and $TautulliConfig.MinWatchedPercent -gt 0) {
-                $qualifying = Get-TautulliHistoryPlayCount -RatingKey $RatingKey -MediaType $LibraryType
-                return @{ PlayCount = $qualifying; LastPlayed = $entry.LastPlayed }
-            }
             return @{ PlayCount = $rawCount; LastPlayed = $entry.LastPlayed }
         }
         # Item not in Tautulli (never played) -- treat as 0
