@@ -8,15 +8,39 @@ A PowerShell tool that identifies unwatched or rarely watched media across your 
 
 ---
 
+## Table of Contents
+
+- [How It Works](#how-it-works)
+- [Prerequisites](#prerequisites)
+- [Tools](#tools)
+  - [1. Scan Libraries](#1-scan-libraries)
+  - [2. Delete Unwatched](#2-delete-unwatched)
+  - [3. Settings](#3-settings)
+- [Setup](#setup)
+- [Configuration](#configuration)
+- [Finding Your Plex Token](#finding-your-plex-token)
+- [Data Sources](#data-sources)
+- [Plex Library Rescan](#plex-library-rescan)
+- [File Reference](#file-reference)
+- [Log Files](#log-files)
+- [Troubleshooting](#troubleshooting)
+- [Screenshots](#screenshots)
+- [Planned Features](#planned-features)
+- [Contributing](#contributing)
+- [License](#license)
+- [References](#references)
+
+---
+
 ## How It Works
 
 TrashBoy has three jobs:
 
-1. **Discover** — queries Plex (and Tautulli if enabled) for every item in your libraries and checks play counts across all users
-2. **Report** — displays flagged items grouped by library, sorted by play count, with size and last-played date
-3. **Delete** — removes confirmed items through the appropriate \*arr API, then tells Plex to rescan the affected libraries
+1. **Discover**: queries Plex (and Tautulli if enabled) for every item in your libraries and checks play counts across all users
+2. **Report**: displays flagged items grouped by library, sorted by play count, with size and last-played date
+3. **Delete**: removes confirmed items through the appropriate \*arr API, then tells Plex to rescan the affected libraries
 
-TrashBoy never deletes files directly. All deletions go through Sonarr, Radarr, or Lidarr. If you also want the files removed from disk, that instruction is passed to the \*arr app — TrashBoy itself only makes the API call.
+TrashBoy never deletes files directly. All deletions go through Sonarr, Radarr, or Lidarr. If you also want the files removed from disk, that instruction is passed to the \*arr app. TrashBoy itself only makes the API call.
 
 ---
 
@@ -32,14 +56,14 @@ TrashBoy never deletes files directly. All deletions go through Sonarr, Radarr, 
 | **Radarr** | v3 or later, if you manage movies |
 | **Lidarr** | v1 or later, if you manage music |
 
-All three \*arr apps are optional — set `Enabled = $false` for any app you don't use.
+All three \*arr apps are optional: set `Enabled = $false` for any app you don't use.
 
 ---
 
 ## Tools
 
 ### 1. Scan Libraries
-Queries Plex (and Tautulli if enabled) for media with a play count at or below your configured threshold. You can scan all libraries at once or narrow to a specific one. At the start of each scan you are prompted to accept the configured threshold or enter a one-time override — useful for exploratory runs without touching the config file.
+Queries Plex (and Tautulli if enabled) for media with a play count at or below your configured threshold. You can scan all libraries at once or narrow to a specific one. At the start of each scan, you are prompted to accept the configured threshold or enter a one-time override. This is useful for exploratory runs without touching the config file.
 
 Results are grouped by library and show:
 - Title and year
@@ -52,20 +76,20 @@ Results are grouped by library and show:
 ### 2. Delete Unwatched
 Takes the results from the last scan and removes items through their \*arr app. The flow is:
 
-1. **Choose scope** — all flagged items, or a single library
-2. **Review the item list** — every item that would be deleted is shown with plays, dates, size, and \*arr service. Total reclaimable space is displayed at the top.
-3. **Select items** — choose all items (`A`), or enter a subset by number, comma-separated list, or range (e.g. `1,3,5-8,12`)
-4. **Choose delete mode** — see below
-5. **Type YES to confirm** — nothing is deleted until this step
+1. **Choose scope**: all flagged items, or a single library
+2. **Review the item list**: every item that would be deleted is shown with plays, dates, size, and \*arr service. Total reclaimable space is displayed at the top.
+3. **Select items**: choose all items (`A`), or enter a subset by number, comma-separated list, or range (for example, `1,3,5-8,12`)
+4. **Choose delete mode**: see below
+5. **Type YES to confirm**: nothing is deleted until this step
 
 **Delete modes:**
-- **Remove from \*arr only** — the \*arr app forgets the item, files stay on disk. Useful for stopping re-downloads without reclaiming space.
-- **Remove from \*arr + delete files** — permanent. Files are gone from disk. This is the mode you want for reclaiming space.
+- **Remove from \*arr only**: the \*arr app forgets the item, files stay on disk. Useful for stopping re-downloads without reclaiming space.
+- **Remove from \*arr + delete files**: permanent. Files are gone from disk. This is the mode you want for reclaiming space.
 
-After all deletions complete, TrashBoy sends a light rescan request to Plex for each affected library section in a single batch — one request per library, not per item. Rescan is skipped automatically when files are not deleted, since Plex has nothing new to discover.
+After all deletions complete, TrashBoy sends a light rescan request to Plex for each affected library section in a single batch: one request per library, not per item. Rescan is skipped automatically when files are not deleted, since Plex has nothing new to discover.
 
 ### 3. Settings
-Displays your current configuration — Plex URL, Tautulli status, play count threshold, \*arr connection details, and the full library map — without requiring you to open the config file.
+Displays your current configuration, including Plex URL, Tautulli status, play count threshold, \*arr connection details, and the full library map — no need to open the config file.
 
 ---
 
@@ -83,7 +107,7 @@ Place these files in the same folder:
 
 ### 2. Create your config file
 
-Copy `TrashBoy.config.example.ps1` and rename the copy to `TrashBoy.config.ps1`. This file is gitignored — your API keys and tokens stay off GitHub.
+Copy `TrashBoy.config.example.ps1` and rename the copy to `TrashBoy.config.ps1`. This file is gitignored, so your API keys and tokens stay off GitHub.
 
 ### 3. Fill in your settings
 
@@ -103,7 +127,7 @@ If you see an execution policy error, use the `.bat` launcher (which bypasses it
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 ```
 
-**Recommended first run:** choose **Scan Libraries → All libraries**, review the report, then decide whether to delete anything. Never delete without reviewing a scan first.
+**Recommended first run:** choose **Scan Libraries → All libraries**, review the report, then decide whether to delete anything. Do not delete without reviewing a scan first.
 
 ---
 
@@ -229,7 +253,7 @@ When Tautulli is disabled or unavailable, TrashBoy reads `viewCount` directly fr
 
 ## Plex Library Rescan
 
-After a successful delete run (with files deleted), TrashBoy automatically notifies Plex to rescan each affected library section. This is a batch operation — one lightweight refresh request per library, sent after all deletions are complete, regardless of how many items were removed from that library.
+After a successful delete run (with files deleted), TrashBoy automatically notifies Plex to rescan each affected library section. This is a batch operation: one lightweight refresh request per library, sent after all deletions are complete, regardless of how many items were removed from that library.
 
 The rescan is skipped when files are kept on disk, since Plex has nothing new to discover.
 
@@ -293,10 +317,7 @@ TrashBoy matches items to \*arr using GUIDs (TMDB ID, TVDB ID, IMDb ID, MusicBra
 
 **Execution policy error**
 
-Use the `.bat` launcher, or run once as administrator:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
-```
+See [Setup step 4](#4-run-trashboy) above.
 
 ---
 
@@ -308,10 +329,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 
 ## Planned Features
 
-- CSV export of scan results
-- Per-library play count threshold overrides
-- Scheduled / unattended execution via Windows Task Scheduler
-- Potential merge with [FolderBoy](https://github.com/sfaith/FolderBoy) — TBD
+See the [Unreleased](CHANGELOG.md#unreleased) section of the CHANGELOG for the current list of planned work.
 
 ---
 

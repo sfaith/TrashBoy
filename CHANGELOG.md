@@ -16,6 +16,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Size threshold filter (per media type -- movies, TV, music)
 - Logic test suite (TrashBoy_LogicTests.ps1) covering pure functions,
   sanitized for public review
+- Potential merge with FolderBoy -- undecided
 
 ---
 
@@ -25,7 +26,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Dual-source play count in `Get-PlayInfo`** -- when Tautulli is enabled,
   TrashBoy now takes the higher of Tautulli's `play_count` and Plex's
   `viewCount` rather than trusting Tautulli exclusively. Guards against
-  Tautulli data gaps (e.g. `rating_key` changes after a library refresh)
+  Tautulli data gaps (for example, `rating_key` changes after a library refresh)
   causing watched items to be flagged as unwatched.
 - **`Get-PlayInfo` Tautulli cache miss** -- when an item has no Tautulli
   record, TrashBoy now falls back to Plex `viewCount` rather than returning
@@ -53,7 +54,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   *arr matching are now flagged with a `[?]` marker in the item list.
   Detection heuristics: no GUID present in Plex metadata (most reliable),
   or title matches a known release group pattern (RARBG, YTS, FGT, YIFY,
-  EZTV, etc.) or dot-separated uppercase filename format.
+  EZTV, and similar) or dot-separated uppercase filename format.
   - A warning summary is shown at the bottom of any item list containing
     flagged items: `[?] N item(s) marked [?] may fail *arr matching`.
   - After item selection (step 3), if any flagged items are in the selection,
@@ -80,7 +81,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   consistent with the `MaxPlayCount` override pattern.
 - **Skipped item reporting** -- the per-library scan summary line now
   shows how many items were skipped due to the age filter
-  (e.g. `3 flagged  |  12 skipped (added within 365 days)`). The
+  (for example, `3 flagged  |  12 skipped (added within 365 days)`). The
   report header also shows a total skipped count when any items were
   filtered.
 - **`MinAgeDays` in report header** -- the scan report now shows the
@@ -109,7 +110,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **UTF-8 encoding corruption in Plex API responses** -- `Invoke-RestMethod`
   was misinterpreting non-ASCII characters in artist and title names returned
   by the Plex API, displaying `MÃ¶tley CrÃ¼e` instead of `Mötley Crüe`,
-  `BjÃ¶rk` instead of `Björk`, etc. Root cause: PowerShell was decoding the
+  `BjÃ¶rk` instead of `Björk`, and similar. Root cause: PowerShell was decoding the
   response bytes as Latin-1 rather than UTF-8. Fixed by switching
   `Invoke-PlexApi` to `Invoke-WebRequest`, reading `RawContentStream` bytes
   directly, and decoding explicitly with
@@ -150,7 +151,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Manual item selection before deletion** -- after reviewing the flagged
   item list, the user can now choose between deleting all items or manually
   selecting a subset by number. Selection supports individual numbers,
-  comma-separated lists, and ranges (e.g. `1,3,5-8,12`). `A` selects all.
+  comma-separated lists, and ranges (for example, `1,3,5-8,12`). `A` selects all.
   `M` returns to the menu. Invalid input is rejected with a clear error and
   re-prompted. The final delete confirmation (`YES`) reflects only the
   selected items.
